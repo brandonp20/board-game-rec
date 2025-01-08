@@ -1,0 +1,4 @@
+node_modules/
+*.log
+backend/.env
+backend/prod_env/.env
