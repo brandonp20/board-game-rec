@@ -45,7 +45,11 @@ router.post('/api/games', async (req, res) => {
       playtime_min,
       playtime_max,
       players_min,
-      players_max
+      players_max,
+      year_min,
+      year_max,
+      min_age,
+      categories
     } = req.body;
 
     const query = `
@@ -73,9 +77,22 @@ router.post('/api/games', async (req, res) => {
         AND mfg_playtime <= $6
         AND good_players IS NOT NULL
         AND good_players && player_range.range
+        AND year_published >= $9
+        AND year_published <= $10
+        AND mfg_age_rec >= $11
+        AND ($12::text[] IS NULL OR $12::text[] = '{}' OR (
+          CASE WHEN 'cat_thematic' = ANY($12::text[]) THEN cat_thematic = 1 ELSE true END AND
+          CASE WHEN 'cat_strategy' = ANY($12::text[]) THEN cat_strategy = 1 ELSE true END AND
+          CASE WHEN 'cat_war' = ANY($12::text[]) THEN cat_war = 1 ELSE true END AND
+          CASE WHEN 'cat_family' = ANY($12::text[]) THEN cat_family = 1 ELSE true END AND
+          CASE WHEN 'cat_cgs' = ANY($12::text[]) THEN cat_cgs = 1 ELSE true END AND
+          CASE WHEN 'cat_abstract' = ANY($12::text[]) THEN cat_abstract = 1 ELSE true END AND
+          CASE WHEN 'cat_party' = ANY($12::text[]) THEN cat_party = 1 ELSE true END AND
+          CASE WHEN 'cat_childrens' = ANY($12::text[]) THEN cat_childrens = 1 ELSE true END
+        ))
       ORDER BY 
         avg_rating DESC
-      LIMIT 50;
+      LIMIT 100;
     `;
 
     const values = [
@@ -86,7 +103,11 @@ router.post('/api/games', async (req, res) => {
       playtime_min,
       playtime_max,
       players_min,
-      players_max
+      players_max,
+      year_min || 1900,
+      year_max || 2024,
+      min_age || 0,
+      categories || []
     ];
 
     console.log('Executing query with values:', values);

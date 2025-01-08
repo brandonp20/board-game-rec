@@ -1,0 +1,4 @@
+npm start = prod mode. Connects to neon database
+npm run dev = dev mode. Connects to local postgresql
+
+must start server from both frontend and backend directories
