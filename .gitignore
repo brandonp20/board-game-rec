@@ -2,3 +2,5 @@ node_modules/
 *.log
 backend/.env
 backend/prod_env/.env
+recommendations/reveiwer_scrape.py
+recommendations/collections.py
