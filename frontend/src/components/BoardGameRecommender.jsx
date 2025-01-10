@@ -25,6 +25,9 @@ const BoardGameRecommender = () => {
   const [showFavorites, setShowFavorites] = useState(false);
   const [useSelectedGames, setUseSelectedGames] = useState(false);
   const [playerMatchType, setPlayerMatchType] = useState('best');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const handleWeightChange = (event, newValue) => {
     setGameWeight(newValue);
@@ -42,9 +45,12 @@ const BoardGameRecommender = () => {
     setPlayers(newValue);
   };
 
-  const fetchGames = async () => {
-    setLoading(true);
+  const fetchGames = async (isLoadMore = false) => {
+    if (!isLoadMore) {
+      setLoading(true);
+    }
     setError(null);
+  
     try {
       const endpoint = useSelectedGames && selectedGames.length > 0
         ? 'http://localhost:3001/api/games/personalized'
@@ -60,11 +66,13 @@ const BoardGameRecommender = () => {
         playtime_max: playtime[1],
         players_min: players[0],
         players_max: players[1],
-        player_match_type: playerMatchType,
         year_min: yearRange[0],
         year_max: yearRange[1],
         min_age: minAge,
-        categories: selectedCategory === 'all' ? [] : [`cat_${selectedCategory}`]
+        categories: selectedCategory === 'all' ? [] : [`cat_${selectedCategory}`],
+        player_match_type: playerMatchType,
+        page: isLoadMore ? page + 1 : 1,
+        limit: 24
       };
   
       const response = await fetch(endpoint, {
@@ -74,18 +82,31 @@ const BoardGameRecommender = () => {
         },
         body: JSON.stringify(requestBody),
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to fetch games');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.details || `Server error: ${response.status}`);
       }
   
       const data = await response.json();
-      setGames(data);
+      if (data.length < 24) {
+        setHasMore(false);
+      }
+  
+      if (isLoadMore) {
+        setGames(prev => [...prev, ...data]);
+        setPage(prev => prev + 1);
+      } else {
+        setGames(data);
+        setPage(1);
+        setHasMore(true);
+      }
     } catch (error) {
       console.error('Error fetching games:', error);
       setError('Failed to fetch games. Please try again.');
     } finally {
       setLoading(false);
+      setIsLoadingMore(false);
     }
   };
 
@@ -276,9 +297,6 @@ const BoardGameRecommender = () => {
                   onClick={() => setShowAdvanced(!showAdvanced)}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 text-gray-600 hover:text-gray-900 bg-transparent hover:bg-gray-100"
                 >
-                  <span className="text-sm sm:text-base">
-                    {/* Button text */}
-                  </span>
                   <Filter className="h-4 w-4" />
                   {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options'}
                 </Button>
@@ -390,7 +408,7 @@ const BoardGameRecommender = () => {
         {/* Results Section */}
         {games.length > 0 && (
           <div className="text-center mb-4">
-            <h2 className="text-2xl font-semibold text-gray-900">Found {games.length} games</h2>
+            <h2 className="text-2xl font-semibold text-gray-900">Games You'll Love:</h2>
           </div>
         )}
         
@@ -434,7 +452,7 @@ const BoardGameRecommender = () => {
                         rel="noopener noreferrer" 
                         className="block hover:text-indigo-200 transition-colors"
                       >
-                        <h3 className="font-bold text-[1.1rem text-white">{game.game}</h3>
+                        <h3 className="font-bold text-[1.1rem] text-white">{game.game}</h3>
                       </a>
                     </div>
                   </>
@@ -445,13 +463,6 @@ const BoardGameRecommender = () => {
                 )}
               </div>
               <CardContent className="p-4">
-              <a 
-                  href={`https://boardgamegeek.com/boardgame/${game.bgg_id}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="block hover:text-indigo-600 transition-colors"
-                >
-                </a>
                 <div className="space-y-3 text-sm mt-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -490,6 +501,28 @@ const BoardGameRecommender = () => {
             </Card>
           ))}
         </div>
+
+        {games.length > 0 && hasMore && (
+          <div className="flex justify-center mt-8 mb-12">
+            <Button
+              onClick={() => {
+                setIsLoadingMore(true);
+                fetchGames(true);
+              }}
+              disabled={isLoadingMore}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg shadow-md transition-all duration-200"
+            >
+              {isLoadingMore ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 border-t-2 border-white rounded-full animate-spin" />
+                  Loading...
+                </div>
+              ) : (
+                'Load More Games'
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )};

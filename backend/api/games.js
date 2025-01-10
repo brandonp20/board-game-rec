@@ -5,7 +5,6 @@ const router = express.Router();
 const path = require('path');
 const dotenv = require('dotenv');
 
-// Add this to the existing routes in games.js
 router.get('/api/games/search', async (req, res) => {
   try {
     const { query } = req.query;
@@ -35,6 +34,9 @@ dotenv.config({ path: envFile });
 console.log(`Loaded environment variables from: ${envFile}`);
 
 router.post('/api/games/personalized', async (req, res) => {
+  const { page = 1, limit = 24 } = req.body;
+  const offset = (page - 1) * limit;
+  
   try {
     const { 
       selectedGames,
@@ -44,13 +46,21 @@ router.post('/api/games/personalized', async (req, res) => {
       rating_max,
       playtime_min,
       playtime_max,
-      year_min,
-      year_max,
-      min_age
+      players_min,
+      players_max,
+      year_min = 1900,
+      year_max = 2024,
+      min_age = 0,
+      player_match_type = 'best',
+      categories = []
     } = req.body;
     
     const similarGamesQuery = `
-      WITH favorite_game_stats AS (
+      WITH player_count AS (
+        SELECT array_agg(n::text) as requested_players
+        FROM generate_series($7::int, $8::int) n
+      ),
+      favorite_game_stats AS (
         SELECT 
           AVG(CAST(cat_thematic AS FLOAT)) as thematic_avg,
           AVG(CAST(cat_strategy AS FLOAT)) as strategy_avg,
@@ -107,9 +117,24 @@ router.post('/api/games/personalized', async (req, res) => {
         AND avg_rating <= $5
         AND mfg_playtime >= $6 
         AND mfg_playtime <= $7
-        AND year_published >= $8
-        AND year_published <= $9
-        AND mfg_age_rec >= $10
+        AND year_published >= $9
+        AND year_published <= $10
+        AND mfg_age_rec >= $11
+        AND ${
+          player_match_type === 'best' 
+          ? `
+            good_players && (SELECT requested_players FROM player_count)
+            AND NOT EXISTS (
+              SELECT 1 
+              FROM unnest((SELECT requested_players FROM player_count)) as p 
+              WHERE p::text NOT IN (SELECT unnest(good_players))
+            )
+          `
+          : `min_players <= $7 AND max_players >= $8`
+        }
+        ${categories.length > 0 
+          ? `AND (${categories.map(cat => `${cat} = 1`).join(' AND ')})`
+          : ''}
       )
       SELECT 
         game,
@@ -126,28 +151,29 @@ router.post('/api/games/personalized', async (req, res) => {
         (category_score + (rating_overlap_count * similar_users_rating / 10)) * weight_similarity as final_score
       FROM filtered_games
       ORDER BY final_score DESC, avg_rating DESC
-      LIMIT 100;
+      OFFSET ${offset} LIMIT ${limit}
     `;
 
-    const gameIds = selectedGames.map(g => g.bgg_id);
     const values = [
-      gameIds,
+      selectedGames.map(g => g.bgg_id),
       weight_min,
       weight_max,
       rating_min,
       rating_max,
       playtime_min,
       playtime_max,
-      year_min || 1900,
-      year_max || 2024,
-      min_age || 0
+      players_min,
+      players_max,
+      year_min,
+      year_max,
+      min_age
     ];
 
     const result = await pool.query(similarGamesQuery, values);
     res.json(result.rows);
   } catch (error) {
     console.error('Personalization error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
 
@@ -172,6 +198,9 @@ pool.connect((err, client, release) => {
 });
 
 router.post('/api/games', async (req, res) => {
+  const { page = 1, limit = 24 } = req.body;
+  const offset = (page - 1) * limit;
+  
   try {
     const {
       weight_min,
@@ -182,10 +211,11 @@ router.post('/api/games', async (req, res) => {
       playtime_max,
       players_min,
       players_max,
-      year_min,
-      year_max,
-      min_age,
-      categories
+      year_min = 1900,
+      year_max = 2024,
+      min_age = 0,
+      player_match_type = 'best',
+      categories = []
     } = req.body;
 
     const query = `
@@ -202,8 +232,8 @@ router.post('/api/games', async (req, res) => {
         good_players,
         bgg_id
       FROM 
-        board_games_mod,
-        player_count
+        board_games_mod
+      CROSS JOIN player_count
       WHERE 
         game_weight >= $1 
         AND game_weight <= $2
@@ -211,19 +241,27 @@ router.post('/api/games', async (req, res) => {
         AND avg_rating <= $4
         AND mfg_playtime >= $5 
         AND mfg_playtime <= $6
+        AND year_published >= $9
+        AND year_published <= $10
+        AND mfg_age_rec >= $11
         AND ${
-          req.body.player_match_type === 'best' 
+          player_match_type === 'best' 
           ? `
-            good_players && requested_players
+            good_players && player_count.requested_players
             AND NOT EXISTS (
               SELECT 1 
-              FROM unnest(requested_players) as p 
+              FROM unnest(player_count.requested_players) as p 
               WHERE p::text NOT IN (SELECT unnest(good_players))
             )
           `
           : `min_players <= $7 AND max_players >= $8`
         }
-        -- rest of where clause
+        ${categories.length > 0 
+          ? `AND (${categories.map(cat => `${cat} = 1`).join(' AND ')})`
+          : ''}
+      ORDER BY avg_rating DESC
+      OFFSET ${offset} 
+      LIMIT ${limit}
     `;
 
     const values = [
@@ -235,18 +273,14 @@ router.post('/api/games', async (req, res) => {
       playtime_max,
       players_min,
       players_max,
-      year_min || 1900,
-      year_max || 2024,
-      min_age || 0,
-      categories || []
+      year_min,
+      year_max,
+      min_age
     ];
 
-    console.log('Executing query with values:', values);
-    
     const result = await pool.query(query, values);
-    console.log(`Found ${result.rows.length} games`);
-    
     res.json(result.rows);
+    
   } catch (error) {
     console.error('Database query error:', error);
     res.status(500).json({ error: 'Internal server error', details: error.message });
