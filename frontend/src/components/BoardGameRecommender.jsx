@@ -24,6 +24,7 @@ const BoardGameRecommender = () => {
   const [selectedGames, setSelectedGames] = useState([]);
   const [showFavorites, setShowFavorites] = useState(false);
   const [useSelectedGames, setUseSelectedGames] = useState(false);
+  const [playerMatchType, setPlayerMatchType] = useState('best');
 
   const handleWeightChange = (event, newValue) => {
     setGameWeight(newValue);
@@ -59,6 +60,7 @@ const BoardGameRecommender = () => {
         playtime_max: playtime[1],
         players_min: players[0],
         players_max: players[1],
+        player_match_type: playerMatchType,
         year_min: yearRange[0],
         year_max: yearRange[1],
         min_age: minAge,
@@ -227,26 +229,44 @@ const BoardGameRecommender = () => {
               </div>
 
               {/* Player Count */}
-              <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-2 mb-4">
-                  <Users className="h-5 w-5 text-indigo-500" />
-                  <label className="text-lg font-medium text-gray-700">
-                    Players
-                  </label>
+                <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-indigo-500" />
+                        <label className="text-lg font-medium text-gray-700">Players</label>
+                      </div>
+                      <select 
+                        value={playerMatchType}
+                        onChange={(e) => setPlayerMatchType(e.target.value)}
+                        className="bg-white border border-indigo-200 text-gray-600 rounded-lg px-3 py-1 text-sm 
+                        hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 
+                        focus:outline-none transition-colors cursor-pointer appearance-none pr-8 relative"
+                        style={{
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236366F1'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'right 0.5rem center',
+                          backgroundSize: '1.5em 1.5em'
+                        }}
+                      >
+                        <option value="best">Best with</option>
+                        <option value="playable">Playable with</option>
+                      </select>
+                    </div>
+                    <Slider
+                      value={players}
+                      onChange={handlePlayersChange}
+                      min={1}
+                      max={12}
+                      step={1}
+                      valueLabelDisplay="auto"
+                      sx={sliderStyle}
+                    />
+                    <div className="text-sm text-gray-500 text-center">
+                      {players[0]} - {players[1]} players
+                    </div>
+                  </div>
                 </div>
-                <Slider
-                  value={players}
-                  onChange={handlePlayersChange}
-                  min={1}
-                  max={12}
-                  step={1}
-                  valueLabelDisplay="auto"
-                  sx={sliderStyle}
-                />
-                <div className="text-sm text-gray-500 text-center mt-2">
-                  {players[0]} - {players[1]} players
-                </div>
-              </div>
             </div>
 
             {/* Advanced Options and Favorites Section */}
@@ -268,7 +288,7 @@ const BoardGameRecommender = () => {
                   className="flex items-center gap-2 text-gray-600 hover:text-gray-900 bg-transparent hover:bg-gray-100"
                 >
                   <Star className="h-4 w-4" />
-                  {showFavorites ? 'Hide Favorites' : 'Add My Favorites'}
+                  {showFavorites ? 'Hide Favorites' : 'Add Favorite Games'}
                 </Button>
               </div>
 

@@ -189,8 +189,8 @@ router.post('/api/games', async (req, res) => {
     } = req.body;
 
     const query = `
-      WITH player_range AS (
-        SELECT array_agg(n::text) as range
+      WITH player_count AS (
+        SELECT array_agg(n::text) as requested_players
         FROM generate_series($7::int, $8::int) n
       )
       SELECT 
@@ -203,7 +203,7 @@ router.post('/api/games', async (req, res) => {
         bgg_id
       FROM 
         board_games_mod,
-        player_range
+        player_count
       WHERE 
         game_weight >= $1 
         AND game_weight <= $2
@@ -211,24 +211,19 @@ router.post('/api/games', async (req, res) => {
         AND avg_rating <= $4
         AND mfg_playtime >= $5 
         AND mfg_playtime <= $6
-        AND good_players IS NOT NULL
-        AND good_players && player_range.range
-        AND year_published >= $9
-        AND year_published <= $10
-        AND mfg_age_rec >= $11
-        AND ($12::text[] IS NULL OR $12::text[] = '{}' OR (
-          CASE WHEN 'cat_thematic' = ANY($12::text[]) THEN cat_thematic = 1 ELSE true END AND
-          CASE WHEN 'cat_strategy' = ANY($12::text[]) THEN cat_strategy = 1 ELSE true END AND
-          CASE WHEN 'cat_war' = ANY($12::text[]) THEN cat_war = 1 ELSE true END AND
-          CASE WHEN 'cat_family' = ANY($12::text[]) THEN cat_family = 1 ELSE true END AND
-          CASE WHEN 'cat_cgs' = ANY($12::text[]) THEN cat_cgs = 1 ELSE true END AND
-          CASE WHEN 'cat_abstract' = ANY($12::text[]) THEN cat_abstract = 1 ELSE true END AND
-          CASE WHEN 'cat_party' = ANY($12::text[]) THEN cat_party = 1 ELSE true END AND
-          CASE WHEN 'cat_childrens' = ANY($12::text[]) THEN cat_childrens = 1 ELSE true END
-        ))
-      ORDER BY 
-        avg_rating DESC
-      LIMIT 100;
+        AND ${
+          req.body.player_match_type === 'best' 
+          ? `
+            good_players && requested_players
+            AND NOT EXISTS (
+              SELECT 1 
+              FROM unnest(requested_players) as p 
+              WHERE p::text NOT IN (SELECT unnest(good_players))
+            )
+          `
+          : `min_players <= $7 AND max_players >= $8`
+        }
+        -- rest of where clause
     `;
 
     const values = [
