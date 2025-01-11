@@ -25,16 +25,24 @@ console.log('Current Environment Variables:', {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
+// API routes
 const gamesRouter = require('./api/games');
-app.use(gamesRouter);
+app.use('/api/games', gamesRouter);
 
-app.get('/test', (req, res) => {
-  res.json({ message: 'Backend is running!' });
+// Serve static files from the frontend
+const staticPath = path.resolve(__dirname, '../frontend/dist');
+app.use(express.static(staticPath));
+
+// Fallback for SPA routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(staticPath, 'index.html'));
 });
 
+// Start server
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
