@@ -21,9 +21,6 @@ const BoardGameRecommender = () => {
   const [yearRange, setYearRange] = useState([1900, 2024]);
   const [minAge, setMinAge] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedGames, setSelectedGames] = useState([]);
-  const [showFavorites, setShowFavorites] = useState(false);
-  const [useSelectedGames, setUseSelectedGames] = useState(false);
   const [playerMatchType, setPlayerMatchType] = useState('best');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -48,16 +45,14 @@ const BoardGameRecommender = () => {
   const fetchGames = async (isLoadMore = false) => {
     if (!isLoadMore) {
       setLoading(true);
+      setGames([]);
     }
     setError(null);
   
     try {
-      const endpoint = useSelectedGames && selectedGames.length > 0
-        ? 'http://localhost:3001/api/games/personalized'
-        : 'http://localhost:3001/api/games';
-  
+      const endpoint = 'http://localhost:3001/api/games';
+
       const requestBody = {
-        selectedGames: selectedGames,
         weight_min: gameWeight[0],
         weight_max: gameWeight[1],
         rating_min: avgRating[0],
@@ -73,7 +68,7 @@ const BoardGameRecommender = () => {
         player_match_type: playerMatchType,
         page: isLoadMore ? page + 1 : 1,
         limit: 24
-      };
+      }
   
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -141,11 +136,6 @@ const BoardGameRecommender = () => {
     '& .MuiSlider-rail': {
       height: 15
     }
-  };
-
-  const handleGamesSelected = (games) => {
-    setSelectedGames(games);
-    setUseSelectedGames(games.length > 0);  // Automatically use selected games when present
   };
 
   return (
@@ -301,13 +291,6 @@ const BoardGameRecommender = () => {
                   {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options'}
                 </Button>
   
-                <Button 
-                  onClick={() => setShowFavorites(!showFavorites)}
-                  className="flex items-center gap-2 text-gray-600 hover:text-gray-900 bg-transparent hover:bg-gray-100"
-                >
-                  <Star className="h-4 w-4" />
-                  {showFavorites ? 'Hide Favorites' : 'Add Favorite Games'}
-                </Button>
               </div>
 
               {/* Advanced Filters Panel */}
@@ -382,19 +365,15 @@ const BoardGameRecommender = () => {
               )}
             </div>
 
-            {/* Game Search Section */}
-            {showFavorites && (
-              <div className="mt-4">
-                <GameSearch 
-                  onGamesSelected={handleGamesSelected}
-                  useSelectedGames={selectedGames.length > 0}
-                />
-              </div>
-            )}
-
             <div className="flex justify-center w-full relative z-[1]">
               <div className="w-1/2">
-                <EnhancedRollButton onClick={fetchGames} loading={loading} />
+                <EnhancedRollButton 
+                  onClick={() => {
+                    setPage(1); // Reset page number
+                    setHasMore(true); // Reset hasMore flag
+                    fetchGames(false); // Force new fetch
+                  }}  
+                  loading={loading} />
               </div>
             </div>
             {error && (
