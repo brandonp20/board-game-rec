@@ -2,11 +2,18 @@
     "name": "board-game-recommender-full",
     "version": "0.1.0",
     "private": true,
+    "engines": {
+      "node": ">=18.0.0"
+    },
     "scripts": {
-      "install-frontend": "cd frontend && npm install",
+      "install-frontend": "cd frontend && npm install --include=dev",
       "install-backend": "cd backend && npm install",
-      "build-frontend": "cd frontend && npm run build",
+      "build-frontend": "cd frontend && NODE_ENV=production npm run build",
       "start": "cd backend && npm start",
       "postinstall": "npm run install-frontend && npm run install-backend && npm run build-frontend"
+    },
+    "devDependencies": {
+      "@vitejs/plugin-react": "^4.0.3",
+      "vite": "^4.4.5"
     }
   }
