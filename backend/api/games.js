@@ -230,7 +230,8 @@ router.post('/', async (req, res) => {
         avg_rating,
         mfg_playtime,
         good_players,
-        year_published
+        year_published,
+        image_path
       FROM board_games_mod
       CROSS JOIN player_count
       WHERE 

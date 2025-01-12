@@ -88,6 +88,8 @@ const BoardGameRecommender = () => {
       }
   
       const data = await response.json();
+      console.log('Fetched games data:', data);
+
       if (data.length < 24) {
         setHasMore(false);
       }
@@ -102,6 +104,7 @@ const BoardGameRecommender = () => {
       }
     } catch (error) {
       console.error('Error fetching games:', error);
+      console.log('Full error details:', error.message, error.stack);
       setError('Failed to fetch games. Please try again.');
     } finally {
       setLoading(false);
@@ -415,16 +418,17 @@ const BoardGameRecommender = () => {
               className="overflow-hidden hover:shadow-2xl transition-all duration-300 animate-fadeIn"
             >
               <div className="aspect-video relative bg-gray-100">
-                {game.image_path ? (
-                  <>
-                    <img
-                      src={game.image_path}
-                      alt={game.game}
-                      className="object-cover w-full h-full"
-                      onError={(e) => {
-                        e.target.src = "/api/placeholder/400/300";
-                      }}
-                    />
+              {game.image_path ? (
+                <>
+                  <img
+                    src={game.image_path}
+                    alt={game.game}
+                    className="object-cover w-full h-full"
+                    onError={(e) => {
+                      console.log('Image failed to load:', game.image_path);
+                      e.target.src = "/api/placeholder/400/300";
+                    }}
+                  />
                     {/* Gradient overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
                     {/* Game title overlay */}
