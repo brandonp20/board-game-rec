@@ -1,2 +1,0 @@
-2025-01-11 19:26:52.362000: Database connection error: could not translate host name "planner-server" to address: Temporary failure in name resolution
-

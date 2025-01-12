@@ -26,6 +26,8 @@ const BoardGameRecommender = () => {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
   const handleWeightChange = (event, newValue) => {
     setGameWeight(newValue);
   };
@@ -50,7 +52,9 @@ const BoardGameRecommender = () => {
     setError(null);
   
     try {
-      const endpoint = 'http://localhost:3000/api/games';
+      const endpoint = import.meta.env.VITE_API_URL 
+      ? `${import.meta.env.VITE_API_URL}/api/games`
+      : 'http://localhost:3000/api/games';
 
       const requestBody = {
         weight_min: gameWeight[0],

@@ -1,2 +1,0 @@
-2025-01-11 19:27:24.703541: Database connection error: connection to server at "dpg-crgeb6qj1k6c739hata0-a.oregon-postgres.render.com" (35.227.164.209), port 5432 failed: FATAL:  database "your_render_db" does not exist
-

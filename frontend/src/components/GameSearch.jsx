@@ -17,7 +17,7 @@ const GameSearch = ({ onGamesSelected, useSelectedGames }) => {
     }
     
     try {
-      const response = await fetch(`http://localhost:3001/api/games/search?query=${query}`);
+      const response = await fetch(`http://localhost:3000/api/games/search?query=${query}`);
       const data = await response.json();
       setSearchResults(data);
     } catch (error) {

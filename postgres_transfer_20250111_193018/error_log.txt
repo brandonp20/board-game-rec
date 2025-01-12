@@ -1,2 +1,0 @@
-2025-01-11 19:30:18.865919: Database connection error: invalid dsn: invalid connection option "schema"
-
