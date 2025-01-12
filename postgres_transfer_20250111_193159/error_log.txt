@@ -1,0 +1,9 @@
+2025-01-11 19:32:00.650666: Error transferring board_games_mod: column "bgg_id" is of type integer[] but expression is of type integer
+LINE 3:                         VALUES (84876,'The Castles of Burgun...
+                                        ^
+HINT:  You will need to rewrite or cast the expression.
+
+2025-01-11 19:32:00.872229: Error transferring collections: identity column type must be smallint, integer, or bigint
+
+2025-01-11 19:32:01.051867: Error transferring reviewers: identity column type must be smallint, integer, or bigint
+

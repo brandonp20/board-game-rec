@@ -5,7 +5,27 @@ const router = express.Router();
 const path = require('path');
 const dotenv = require('dotenv');
 
-router.get('/api/games/search', async (req, res) => {
+// Set up the pool with SSL mode required for Neon
+const pool = new Pool({
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
+  ssl: {
+    rejectUnauthorized: false, // Optional: Only use if you're sure about the security setup.
+  },
+});
+
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error('Database connection error:', err.stack);
+  } else {
+    console.log('Connected to the database');
+  }
+});
+
+router.get('/search', async (req, res) => {
   try {
     const { query } = req.query;
     const searchQuery = `
@@ -33,7 +53,7 @@ dotenv.config({ path: envFile });
 
 console.log(`Loaded environment variables from: ${envFile}`);
 
-router.post('/api/games/personalized', async (req, res) => {
+router.post('/personalized', async (req, res) => {
   const { page = 1, limit = 24 } = req.body;
   const offset = (page - 1) * limit;
   
@@ -177,31 +197,11 @@ router.post('/api/games/personalized', async (req, res) => {
   }
 });
 
-// Set up the pool with SSL mode required for Neon
-const pool = new Pool({
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
-  ssl: {
-    rejectUnauthorized: false, // Optional: Only use if you're sure about the security setup.
-  },
-});
-
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error('Database connection error:', err.stack);
-  } else {
-    console.log('Connected to the database');
-  }
-});
-
-router.post('/api/games', async (req, res) => {
-  const { page = 1, limit = 24 } = req.body;
-  const offset = (page - 1) * limit;
-  
+router.post('/', async (req, res) => {
   try {
+    const { page = 1, limit = 24 } = req.body;
+    const offset = (page - 1) * limit;
+    
     const {
       weight_min,
       weight_max,
@@ -218,52 +218,46 @@ router.post('/api/games', async (req, res) => {
       categories = []
     } = req.body;
 
-    const query = `
+    const mainQuery = `
       WITH player_count AS (
         SELECT array_agg(n::text) as requested_players
-        FROM generate_series($7::int, $8::int) n
+        FROM generate_series($10::int, $11::int) n
       )
       SELECT 
         game,
-        COALESCE(image_path, '') as image_path,
-        CAST(game_weight AS FLOAT) as game_weight,
-        CAST(avg_rating AS FLOAT) as avg_rating,
+        bgg_id,
+        game_weight,
+        avg_rating,
         mfg_playtime,
         good_players,
-        bgg_id
-      FROM 
-        board_games_mod
+        year_published
+      FROM board_games_mod
       CROSS JOIN player_count
       WHERE 
-        game_weight >= $1 
-        AND game_weight <= $2
-        AND avg_rating >= $3 
-        AND avg_rating <= $4
-        AND mfg_playtime >= $5 
-        AND mfg_playtime <= $6
-        AND year_published >= $9
-        AND year_published <= $10
-        AND mfg_age_rec >= $11
+        game_weight BETWEEN $1 AND $2
+        AND avg_rating BETWEEN $3 AND $4
+        AND mfg_playtime BETWEEN $5 AND $6
+        AND year_published BETWEEN $7 AND $8
+        AND mfg_age_rec >= $9
         AND ${
           player_match_type === 'best' 
           ? `
-            good_players && player_count.requested_players
+            good_players && (SELECT requested_players FROM player_count)
             AND NOT EXISTS (
               SELECT 1 
-              FROM unnest(player_count.requested_players) as p 
+              FROM unnest((SELECT requested_players FROM player_count)) as p 
               WHERE p::text NOT IN (SELECT unnest(good_players))
             )
           `
-          : `min_players <= $7 AND max_players >= $8`
+          : `min_players <= $11 AND max_players >= $10`
         }
         ${categories.length > 0 
           ? `AND (${categories.map(cat => `${cat} = 1`).join(' AND ')})`
           : ''}
       ORDER BY avg_rating DESC
-      OFFSET ${offset} 
-      LIMIT ${limit}
+      OFFSET $12 LIMIT $13
     `;
-
+    
     const values = [
       weight_min,
       weight_max,
@@ -271,16 +265,20 @@ router.post('/api/games', async (req, res) => {
       rating_max,
       playtime_min,
       playtime_max,
-      players_min,
-      players_max,
       year_min,
       year_max,
-      min_age
+      min_age,
+      players_min,
+      players_max,
+      offset,
+      limit
     ];
 
-    const result = await pool.query(query, values);
+    console.log('Query:', mainQuery);
+    console.log('Values:', values);
+
+    const result = await pool.query(mainQuery, values);
     res.json(result.rows);
-    
   } catch (error) {
     console.error('Database query error:', error);
     res.status(500).json({ error: 'Internal server error', details: error.message });
