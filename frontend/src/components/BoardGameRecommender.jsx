@@ -50,7 +50,7 @@ const BoardGameRecommender = () => {
     setError(null);
   
     try {
-      const endpoint = 'http://localhost:3001/api/games';
+      const endpoint = 'http://localhost:3000/api/games';
 
       const requestBody = {
         weight_min: gameWeight[0],
