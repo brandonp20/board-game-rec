@@ -1,5 +1,7 @@
 import GameSearch from './GameSearch';
 import EnhancedRollButton from './EnhancedRollButton';
+import SimpleShareButton from './SimpleShareButton';
+import { useUrlParams } from './useUrlParams.jsx';
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -27,6 +29,35 @@ const BoardGameRecommender = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+  // Create an object with all your current filter state
+  const filterState = {
+    weight: gameWeight,
+    rating: avgRating,
+    playtime: playtime,
+    players: players,
+    year: yearRange,
+    age: minAge,
+    category: selectedCategory,
+    playerMatch: playerMatchType,
+    advanced: showAdvanced
+  };
+
+  // Initialize URL params handling
+  useUrlParams(
+    filterState, // Initial state
+    {  // State setters
+      setGameWeight,
+      setAvgRating,
+      setPlaytime,
+      setPlayers,
+      setYearRange,
+      setMinAge,
+      setSelectedCategory,
+      setPlayerMatchType,
+      setShowAdvanced
+    }
+  );
 
   const handleWeightChange = (event, newValue) => {
     setGameWeight(newValue);
@@ -148,7 +179,6 @@ const BoardGameRecommender = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 px-2 sm:px-4">
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-10">
-        {/* Enhanced Header */}
         <div className="text-center space-y-4">
         <h1 className="text-4xl sm:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
           Board Game Finder
@@ -236,7 +266,7 @@ const BoardGameRecommender = () => {
                   value={playtime}
                   onChange={handlePlaytimeChange}
                   min={0}
-                  max={500}
+                  max={240}
                   step={15}
                   valueLabelDisplay="auto"
                   sx={sliderStyle}
@@ -289,14 +319,16 @@ const BoardGameRecommender = () => {
 
             {/* Advanced Options and Favorites Section */}
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                <Button 
-                  onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 text-gray-600 hover:text-gray-900 bg-transparent hover:bg-gray-100"
-                >
-                  <Filter className="h-4 w-4" />
-                  {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options'}
-                </Button>
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+              <Button 
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 text-gray-600 hover:text-gray-900 bg-transparent hover:bg-gray-100"
+              >
+                <Filter className="h-4 w-4" />
+                {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options'}
+              </Button>
+              
+              <SimpleShareButton filterState={filterState} />
   
               </div>
 
