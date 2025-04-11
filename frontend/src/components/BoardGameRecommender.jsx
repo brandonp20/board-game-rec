@@ -27,6 +27,8 @@ const BoardGameRecommender = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [selectedGames, setSelectedGames] = useState([]);
+  const [isPersonalized, setIsPersonalized] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -40,7 +42,14 @@ const BoardGameRecommender = () => {
     age: minAge,
     category: selectedCategory,
     playerMatch: playerMatchType,
-    advanced: showAdvanced
+    advanced: showAdvanced,
+    selectedGames: selectedGames
+  };
+
+  // Handle game selection
+  const handleGamesSelected = (games) => {
+    setSelectedGames(games);
+    setIsPersonalized(games.length > 0);
   };
 
   // Initialize URL params handling
@@ -84,10 +93,11 @@ const BoardGameRecommender = () => {
   
     try {
       const endpoint = import.meta.env.VITE_API_URL 
-      ? `${import.meta.env.VITE_API_URL}/api/games`
-      : 'http://localhost:3000/api/games';
-
+        ? `${import.meta.env.VITE_API_URL}/api/games${isPersonalized ? '/personalized' : ''}`
+        : `http://localhost:3000/api/games${isPersonalized ? '/personalized' : ''}`;
+  
       const requestBody = {
+        selectedGames: selectedGames,
         weight_min: gameWeight[0],
         weight_max: gameWeight[1],
         rating_min: avgRating[0],
@@ -98,12 +108,13 @@ const BoardGameRecommender = () => {
         players_max: players[1],
         year_min: yearRange[0],
         year_max: yearRange[1],
-        min_age: minAge,
-        categories: selectedCategory === 'all' ? [] : [`cat_${selectedCategory}`],
         player_match_type: playerMatchType,
+        categories: selectedCategory === 'all' ? [] : [`cat_${selectedCategory}`],
         page: isLoadMore ? page + 1 : 1,
         limit: 24
-      }
+      };
+  
+      console.log('Request body:', requestBody);
   
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -112,7 +123,7 @@ const BoardGameRecommender = () => {
         },
         body: JSON.stringify(requestBody),
       });
-
+  
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.details || `Server error: ${response.status}`);
@@ -120,7 +131,7 @@ const BoardGameRecommender = () => {
   
       const data = await response.json();
       console.log('Fetched games data:', data);
-
+  
       if (data.length < 24) {
         setHasMore(false);
       }
@@ -135,7 +146,6 @@ const BoardGameRecommender = () => {
       }
     } catch (error) {
       console.error('Error fetching games:', error);
-      console.log('Full error details:', error.message, error.stack);
       setError('Failed to fetch games. Please try again.');
     } finally {
       setLoading(false);
@@ -316,6 +326,20 @@ const BoardGameRecommender = () => {
                   </div>
                 </div>
             </div>
+
+            <Card className="backdrop-blur-sm bg-white/95 shadow-xl">
+          <CardContent className="p-4 sm:p-8">
+            <div className="space-y-4">
+              <p className="text-lg font-medium text-gray-700 text-center">
+                Personalize results by selecting up to 3 games you love:
+              </p>
+              <GameSearch 
+                onGamesSelected={handleGamesSelected}
+                selectedGames={selectedGames}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
             {/* Advanced Options and Favorites Section */}
             <div className="space-y-6">

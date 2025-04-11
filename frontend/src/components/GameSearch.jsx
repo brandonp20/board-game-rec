@@ -1,13 +1,10 @@
-// src/components/GameSearch.jsx
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from './ui/card';
-import { Button } from './ui/button';
-import { Search, X, Scale, Clock, Users, Layout} from 'lucide-react';
+import { Card } from './ui/card';
+import { Search, Layout } from 'lucide-react';
 
-const GameSearch = ({ onGamesSelected, useSelectedGames }) => {
+const GameSearch = ({ onGamesSelected, selectedGames }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [selectedGames, setSelectedGames] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
 
   const searchGames = async (query) => {
@@ -17,7 +14,12 @@ const GameSearch = ({ onGamesSelected, useSelectedGames }) => {
     }
     
     try {
-      const response = await fetch(`http://localhost:3000/api/games/search?query=${query}`);
+      const encodedQuery = encodeURIComponent(query);
+      const endpoint = import.meta.env.VITE_API_URL 
+        ? `${import.meta.env.VITE_API_URL}/api/games/search?query=${encodedQuery}`
+        : `http://localhost:3000/api/games/search?query=${encodedQuery}`;
+        
+      const response = await fetch(endpoint);
       const data = await response.json();
       setSearchResults(data);
     } catch (error) {
@@ -28,7 +30,6 @@ const GameSearch = ({ onGamesSelected, useSelectedGames }) => {
   const handleGameSelect = (game) => {
     if (selectedGames.length < 3 && !selectedGames.find(g => g.bgg_id === game.bgg_id)) {
       const newSelectedGames = [...selectedGames, game];
-      setSelectedGames(newSelectedGames);
       onGamesSelected(newSelectedGames);
     }
     setSearchQuery('');
@@ -37,7 +38,6 @@ const GameSearch = ({ onGamesSelected, useSelectedGames }) => {
 
   const removeGame = (gameId) => {
     const newSelectedGames = selectedGames.filter(g => g.bgg_id !== gameId);
-    setSelectedGames(newSelectedGames);
     onGamesSelected(newSelectedGames);
   };
 
@@ -48,26 +48,6 @@ const GameSearch = ({ onGamesSelected, useSelectedGames }) => {
 
     return () => clearTimeout(debounce);
   }, [searchQuery]);
-
-  const handleGamesSelected = (games) => {
-    setSelectedGames(games);
-  };
-
-  const formatNumber = (value) => {
-    if (typeof value === 'string') {
-      value = parseFloat(value);
-    }
-    if (typeof value === 'number' && !isNaN(value)) {
-      return value.toFixed(1);
-    }
-    return 'N/A';
-  };
-
-  const formatPlayerCount = (playerArray) => {
-    if (!playerArray || !Array.isArray(playerArray) || playerArray.length === 0) return 'Unknown';
-    if (playerArray.length === 1) return `${playerArray[0]} players`;
-    return `${playerArray[0]}-${playerArray[playerArray.length - 1]} players`;
-  };
 
   return (
     <div className="w-full max-w-xl mx-auto px-2 sm:px-0">
@@ -102,55 +82,41 @@ const GameSearch = ({ onGamesSelected, useSelectedGames }) => {
         )}
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4">
+      {/* Selected Games Grid */}
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {selectedGames.map(game => (
-          <Card key={game.bgg_id} className="bg-white overflow-hidden">
-            <div className="flex items-start p-3 gap-4">
-              {/* Game Image */}
-              <div className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-                {game.image_path ? (
+          <Card 
+            key={game.bgg_id} 
+            className="overflow-hidden hover:shadow-2xl transition-all duration-300 animate-fadeIn relative group cursor-pointer"
+            onClick={() => removeGame(game.bgg_id)}
+          >
+            <div className="aspect-video relative bg-gray-100">
+              {game.image_path ? (
+                <>
                   <img
                     src={game.image_path}
                     alt={game.game}
-                    className="w-full h-full object-cover"
+                    className="object-cover w-full h-full"
                     onError={(e) => {
-                      e.target.src = "/api/placeholder/96/96";
+                      e.target.src = "/api/placeholder/400/300";
                     }}
                   />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                    <Layout className="h-8 w-8 text-gray-400" />
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                  {/* Game title overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <h3 className="font-bold text-[1.1rem] text-white">{game.game}</h3>
                   </div>
-                )}
-              </div>
-
-              {/* Game Details */}
-              <div className="flex-grow">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-semibold text-gray-900">{game.game}</h3>
-                  <button
-                    onClick={() => removeGame(game.bgg_id)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                  {/* Hover overlay with remove hint */}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
+                    <span className="text-white font-medium">Click to remove</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-400">
+                  <Layout className="h-12 w-12" />
                 </div>
-
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="flex items-center gap-1">
-                    <Scale className="h-4 w-4 text-indigo-500" />
-                    <span className="text-gray-600">Weight: {formatNumber(game.game_weight)}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4 text-green-500" />
-                    <span className="text-gray-600">{game.mfg_playtime || 'N/A'} min</span>
-                  </div>
-                  <div className="flex items-center gap-1 col-span-2">
-                    <Users className="h-4 w-4 text-blue-500" />
-                    <span className="text-gray-600">{formatPlayerCount(game.good_players)}</span>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </Card>
         ))}
