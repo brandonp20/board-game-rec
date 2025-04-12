@@ -1,3 +1,5 @@
+/* BoardGameRecommender.jsx */
+
 import GameSearch from './GameSearch';
 import EnhancedRollButton from './EnhancedRollButton';
 import SimpleShareButton from './SimpleShareButton';
@@ -207,14 +209,14 @@ const BoardGameRecommender = () => {
             {/* Category Selector */}
             <div className="mb-8">
               <div className="flex flex-wrap items-center justify-center gap-2 mb-8 px-2 text-center">
-                <span className="text-2xl sm:text-3xl text-gray-900">Show me</span>
+                <span className="text-3xl sm:text-3xl text-gray-900">Show me</span>
                 <div className="relative inline-flex items-center group">
-                  <span className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 group-hover:animate-gradient">
+                  <span className="text-3xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 group-hover:animate-gradient">
                     {selectedCategory === 'all' ? 'All' : selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}
                   </span>
                   <button
                     onClick={() => document.getElementById('category-select').click()}
-                    className="ml-1 text-gray-400 hover:text-gray-600"
+                    className="ml-1 text-2xl text-gray-400 hover:text-gray-600"
                   >
                     ▾
                   </button>
@@ -446,6 +448,36 @@ const BoardGameRecommender = () => {
             )}
           </CardContent>
         </Card>
+
+        {games.length > 0 && ( // Only show controls if there are results to sort
+        <div className="flex justify-end items-center gap-4 mb-4 px-2 sm:px-0 relative z-[1]"> {/* Added relative z-[1] */}
+          <label htmlFor="sort-by" className="text-sm font-medium text-gray-700">Sort by:</label>
+          <select
+            id="sort-by"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="bg-white border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2 pr-8 appearance-none"
+            style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 0.5rem center',
+                backgroundSize: '1em 1em'
+            }}
+          >
+            <option value="rating">Rating</option>
+            <option value="weight">Complexity</option>
+            <option value="playtime">Playtime</option>
+          </select>
+          <Button
+            onClick={() => setSortAscending(prev => !prev)}
+            variant="outline"
+            size="sm"
+            className="w-[70px] text-center"
+          >
+            {sortAscending ? 'Asc ▲' : 'Desc ▼'}
+          </Button>
+        </div>
+      )}
 
         {/* Results Section */}
         {games.length > 0 && (

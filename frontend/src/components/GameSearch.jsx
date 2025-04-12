@@ -1,3 +1,5 @@
+/* GameSearch.jsx */
+
 import React, { useState, useEffect } from 'react';
 import { Card } from './ui/card';
 import { Search, Layout } from 'lucide-react';

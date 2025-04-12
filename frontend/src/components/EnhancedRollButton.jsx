@@ -1,3 +1,5 @@
+/* EnhancedRollButton.jsx */
+
 import React from 'react';
 
 const EnhancedRollButton = ({ onClick, loading }) => {
