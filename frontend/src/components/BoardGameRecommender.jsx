@@ -1,17 +1,21 @@
 /* BoardGameRecommender.jsx */
 
-import GameSearch from './GameSearch';
 import EnhancedRollButton from './EnhancedRollButton';
 import SimpleShareButton from './SimpleShareButton';
 import { useUrlParams } from './useUrlParams.jsx';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import Slider from '@mui/material/Slider';
-import { Layout, Star,Scale, Clock, Users, Filter } from 'lucide-react'; 
+import { Layout, Star,Scale, Clock, Users, Filter, Search } from 'lucide-react'; 
+
 
 const BoardGameRecommender = () => {
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [favoriteGameSearchText, setFavoriteGameSearchText] = useState('');
+  const [favoriteGameResults, setFavoriteGameResults] = useState([]);
+
   const [gameWeight, setGameWeight] = useState([1, 5]);
   const [avgRating, setAvgRating] = useState([0, 10]);
   const [playtime, setPlaytime] = useState([0, 500]);
@@ -31,8 +35,20 @@ const BoardGameRecommender = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedGames, setSelectedGames] = useState([]);
   const [isPersonalized, setIsPersonalized] = useState(false);
+  const [searchText, setSearchText] = useState('');
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+  // Add this effect for debounced search
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      if (favoriteGameSearchText.trim() !== '') {
+        searchGames(favoriteGameSearchText);
+      }
+    }, 300);
+
+    return () => clearTimeout(debounce);
+  }, [favoriteGameSearchText]);
 
   // Create an object with all your current filter state
   const filterState = {
@@ -66,7 +82,8 @@ const BoardGameRecommender = () => {
       setMinAge,
       setSelectedCategory,
       setPlayerMatchType,
-      setShowAdvanced
+      setShowAdvanced,
+      setSearchText
     }
   );
 
@@ -112,6 +129,7 @@ const BoardGameRecommender = () => {
         year_max: yearRange[1],
         player_match_type: playerMatchType,
         categories: selectedCategory === 'all' ? [] : [`cat_${selectedCategory}`],
+        searchText: searchText,
         page: isLoadMore ? page + 1 : 1,
         limit: 24
       };
@@ -188,6 +206,27 @@ const BoardGameRecommender = () => {
     }
   };
 
+  const searchGames = async (query) => {
+    if (!query || query.trim() === '') {
+      setFavoriteGameResults([]);
+      return;
+    }
+    
+    try {
+      const encodedQuery = encodeURIComponent(query);
+      const endpoint = import.meta.env.VITE_API_URL 
+        ? `${import.meta.env.VITE_API_URL}/api/games/search?query=${encodedQuery}`
+        : `http://localhost:3000/api/games/search?query=${encodedQuery}`;
+        
+      const response = await fetch(endpoint);
+      const data = await response.json();
+      setFavoriteGameResults(data);
+    } catch (error) {
+      console.error('Error searching games:', error);
+      setFavoriteGameResults([]);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 px-2 sm:px-4">
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-10">
@@ -260,15 +299,15 @@ const BoardGameRecommender = () => {
                   step={0.5}
                   valueLabelDisplay="auto"
                   sx={sliderStyle}
-                />
-                <div className="text-sm text-gray-500 text-center mt-2">
-                  {gameWeight[0]} - {gameWeight[1]}
+                  />
+                  <div className="text-sm text-gray-500 text-center mt-2">
+                    {gameWeight[0]} - {gameWeight[1]}
+                  </div>
                 </div>
-              </div>
-
-              {/* Playtime */}
-              <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-2 mb-4">
+  
+                {/* Playtime */}
+                <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-4">
                   <Clock className="h-5 w-5 text-indigo-500" />
                   <label className="text-lg font-medium text-gray-700">
                     Playtime
@@ -289,61 +328,75 @@ const BoardGameRecommender = () => {
               </div>
 
               {/* Player Count */}
-                <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Users className="h-5 w-5 text-indigo-500" />
-                        <label className="text-lg font-medium text-gray-700">Players</label>
+                      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                          <Users className="h-5 w-5 text-indigo-500" />
+                          <label className="text-lg font-medium text-gray-700">Players</label>
+                          </div>
+                          <select 
+                          value={playerMatchType}
+                          onChange={(e) => setPlayerMatchType(e.target.value)}
+                          className="bg-white border border-indigo-200 text-gray-600 rounded-lg px-3 py-1 text-sm 
+                          hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 
+                          focus:outline-none transition-colors cursor-pointer appearance-none pr-8 relative"
+                          style={{
+                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236366F1'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'right 0.5rem center',
+                            backgroundSize: '1.5em 1.5em'
+                          }}
+                          >
+                          <option value="best">Best with</option>
+                          <option value="playable">Playable with</option>
+                          </select>
+                        </div>
+                        <Slider
+                          value={players}
+                          onChange={handlePlayersChange}
+                          min={1}
+                          max={12}
+                          step={1}
+                          valueLabelDisplay="auto"
+                          sx={sliderStyle}
+                        />
+                        <div className="text-sm text-gray-500 text-center">
+                          {players[0]} - {players[1]} players
+                        </div>
+                        </div>
                       </div>
-                      <select 
-                        value={playerMatchType}
-                        onChange={(e) => setPlayerMatchType(e.target.value)}
-                        className="bg-white border border-indigo-200 text-gray-600 rounded-lg px-3 py-1 text-sm 
-                        hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 
-                        focus:outline-none transition-colors cursor-pointer appearance-none pr-8 relative"
-                        style={{
-                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236366F1'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'right 0.5rem center',
-                          backgroundSize: '1.5em 1.5em'
-                        }}
-                      >
-                        <option value="best">Best with</option>
-                        <option value="playable">Playable with</option>
-                      </select>
                     </div>
-                    <Slider
-                      value={players}
-                      onChange={handlePlayersChange}
-                      min={1}
-                      max={12}
-                      step={1}
-                      valueLabelDisplay="auto"
-                      sx={sliderStyle}
-                    />
-                    <div className="text-sm text-gray-500 text-center">
-                      {players[0]} - {players[1]} players
+
+                    {/* Text Search Input */}
+                    <div className="mt-6 sm:mt-8">
+                      {/* Apply flex-col on small screens, flex-row on sm and up */}
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                        {/* Add bottom margin on small screens */}
+                        <label htmlFor="text-search" className="text-lg font-medium text-gray-700 mb-2 sm:mb-0">
+                          Search by name (optional):
+                        </label>
+
+                        <div className="flex items-center border-2 rounded-lg focus-within:border-indigo-500 bg-white transition-colors duration-200 flex-grow">
+                          <Search className="h-5 w-5 ml-3 text-gray-400 flex-shrink-0" aria-hidden="true" />
+
+                          <input
+                            id="text-search"
+                            type="text"
+                            placeholder="E.g., Catan, Wingspan..."
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
+                            className="flex-grow p-3 focus:outline-none bg-transparent"
+                          />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-            </div>
 
-            <Card className="backdrop-blur-sm bg-white/95 shadow-xl">
-          <CardContent className="p-4 sm:p-8">
-            <div className="space-y-4">
-              <p className="text-lg font-medium text-gray-700 text-center">
-                Personalize results by selecting up to 3 games you love:
-              </p>
-              <GameSearch 
-                onGamesSelected={handleGamesSelected}
-                selectedGames={selectedGames}
-              />
-            </div>
-          </CardContent>
-        </Card>
+                    
 
-            {/* Advanced Options and Favorites Section */}
+
+
+                    {/* Advanced Options and Favorites Section */}
             <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
               <Button 
@@ -430,6 +483,110 @@ const BoardGameRecommender = () => {
               )}
             </div>
 
+            <Card className="backdrop-blur-sm bg-indigo-50 shadow-md">
+                      <CardContent className="p-4 sm:p-8">
+                        <div className="space-y-4">
+                          {/* Match the style of the "Search by name" section */}
+                          {/* Apply flex-col on small screens, flex-row on sm and up */}
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                            {/* Add bottom margin on small screens */}
+                            <label className="text-lg font-medium text-gray-700 mb-2 sm:mb-0">
+                              Add up to 3 games you love:
+                            </label>
+
+                            <div className="flex items-center border-2 rounded-lg focus-within:border-indigo-500 bg-white transition-colors duration-200 flex-grow">
+                              <Search className="h-5 w-5 ml-3 text-gray-400 flex-shrink-0" aria-hidden="true" />
+
+                              <input
+                                type="text"
+                                placeholder="Add your favorites..."
+                                value={favoriteGameSearchText}
+                                onChange={(e) => {
+                                  setFavoriteGameSearchText(e.target.value);
+                                  setShowDropdown(true);
+                                  
+                                  if (e.target.value.trim() === '') {
+                                    setFavoriteGameResults([]);
+                                  }
+                                }}
+                                className="flex-grow p-3 focus:outline-none bg-transparent"
+                                disabled={selectedGames.length >= 3}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Dropdown container - position it properly */}
+                          <div className="relative">
+                            {showDropdown && favoriteGameResults.length > 0 && (
+                              <div className="absolute top-0 left-0 right-0 bg-white border rounded-lg shadow-lg z-[9999] max-h-[25vh] overflow-y-auto">
+                                {favoriteGameResults.map(game => (
+                                  <div
+                                    key={game.bgg_id}
+                                    className="p-3 hover:bg-gray-100 cursor-pointer"
+                                    onClick={() => {
+                                      if (selectedGames.length < 3 && !selectedGames.find(g => g.bgg_id === game.bgg_id)) {
+                                        setSelectedGames([...selectedGames, game]);
+                                        setIsPersonalized(true);
+                                      }
+                                      setFavoriteGameSearchText('');
+                                      setFavoriteGameResults([]);
+                                      setShowDropdown(false);
+                                    }}
+                                  >
+                                    {game.game}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Selected Games Grid */}
+                          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {selectedGames.map(game => (
+                              <Card 
+                              key={game.bgg_id} 
+                              className="overflow-hidden hover:shadow-xl transition-all duration-300 animate-fadeIn relative group cursor-pointer"
+                              onClick={() => {
+                                const newSelectedGames = selectedGames.filter(g => g.bgg_id !== game.bgg_id);
+                                setSelectedGames(newSelectedGames);
+                                setIsPersonalized(newSelectedGames.length > 0);
+                              }}
+                            >
+                                <div className="aspect-video relative bg-gray-100">
+                                  {game.image_path ? (
+                                    <>
+                                      <img
+                                        src={game.image_path}
+                                        alt={game.game}
+                                        className="object-cover w-full h-full"
+                                        onError={(e) => {
+                                          e.target.src = "/api/placeholder/400/300";
+                                        }}
+                                      />
+                                      {/* Gradient overlay */}
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                                      {/* Game title overlay */}
+                                      <div className="absolute bottom-0 left-0 right-0 p-4">
+                                        <h3 className="font-bold text-[1.1rem] text-white">{game.game}</h3>
+                                      </div>
+                                      {/* Hover overlay with remove hint */}
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
+                                        <span className="text-white font-medium">Click to remove</span>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div className="flex items-center justify-center h-full text-gray-400">
+                                      <Layout className="h-12 w-12" />
+                                    </div>
+                                  )}
+                                </div>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
             <div className="flex justify-center w-full relative z-[1]">
               <div className="w-1/2">
                 <EnhancedRollButton 
@@ -467,6 +624,7 @@ const BoardGameRecommender = () => {
             <option value="rating">Rating</option>
             <option value="weight">Complexity</option>
             <option value="playtime">Playtime</option>
+            <option value="name">Name</option>
           </select>
           <Button
             onClick={() => setSortAscending(prev => !prev)}
